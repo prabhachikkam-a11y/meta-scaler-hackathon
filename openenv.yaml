@@ -1,0 +1,9 @@
+name: customer-support-sla-openenv
+description: Production-style customer support workflow simulation with SLA-driven triage and deterministic grading.
+version: 1.0.0
+entrypoint: env.environment:CustomerSupportEnv
+tags:
+  - openenv
+  - customer-support
+  - workflow
+  - rl
