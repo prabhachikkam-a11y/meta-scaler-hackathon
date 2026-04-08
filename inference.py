@@ -11,8 +11,8 @@ from env.models import Action
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
+API_KEY = os.getenv("API_KEY")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
-USE_LLM_ACTIONS = os.getenv("USE_LLM_ACTIONS", "false").strip().lower() == "true"
 BENCHMARK = "customer-support-sla-openenv"
 
 TASKS = [
@@ -103,10 +103,7 @@ def _fallback_action(task_id: str, step: int) -> Action:
 
 
 def _llm_action(client: object, task_id: str, step: int, observation: dict) -> Optional[Action]:
-    if not USE_LLM_ACTIONS:
-        return None
-
-    if not HF_TOKEN or client is None:
+    if client is None:
         return None
 
     prompt = {
@@ -201,11 +198,11 @@ def main() -> None:
         message=r"Core Pydantic V1 functionality isn't compatible with Python 3\.14 or greater\.",
     )
 
-    client = None
-    if USE_LLM_ACTIONS:
-        from openai import OpenAI
+    from openai import OpenAI
 
-        client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+    # Use injected validator credentials first so calls are observed on LiteLLM proxy.
+    api_key = API_KEY or HF_TOKEN
+    client = OpenAI(base_url=API_BASE_URL, api_key=api_key)
 
     for task_id in TASKS:
         run_task(client, task_id)

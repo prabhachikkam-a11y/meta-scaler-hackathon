@@ -95,6 +95,7 @@ curl -X POST http://localhost:7860/reset -H "Content-Type: application/json" -d 
 Set environment variables:
 - `API_BASE_URL`
 - `MODEL_NAME`
+- `API_KEY` (validator-injected LiteLLM proxy key)
 - `HF_TOKEN`
 - `LOCAL_IMAGE_NAME` (optional, only if running a docker-image based env client)
 
