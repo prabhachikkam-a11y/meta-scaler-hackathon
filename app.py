@@ -21,6 +21,15 @@ app = FastAPI(title="OpenEnv Customer Support", version="1.0.0")
 ENV = CustomerSupportEnv()
 
 
+@app.get("/")
+def root() -> Dict[str, Any]:
+    return {
+        "service": "customer-support-sla-openenv",
+        "status": "ready",
+        "endpoints": ["/health", "/reset", "/step", "/state"],
+    }
+
+
 @app.get("/health")
 def health() -> Dict[str, str]:
     return {"status": "ok"}
