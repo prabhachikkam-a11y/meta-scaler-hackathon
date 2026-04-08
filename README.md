@@ -1,6 +1,6 @@
 ---
 title: Customer Support SLA OpenEnv
-emoji: ""
+emoji: "🤖"
 colorFrom: blue
 colorTo: green
 sdk: docker
