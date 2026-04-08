@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from pydantic import BaseModel
 
 from env.environment import CustomerSupportEnv
@@ -36,16 +36,17 @@ def health() -> Dict[str, str]:
 
 
 @app.post("/reset")
-def reset(payload: ResetRequest) -> Dict[str, Any]:
+def reset(payload: Optional[ResetRequest] = Body(default=None)) -> Dict[str, Any]:
+    task_id = payload.task_id if payload is not None else "easy_password_reset"
     try:
-        obs = ENV.reset(task_id=payload.task_id)
+        obs = ENV.reset(task_id=task_id)
     except KeyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {
         "observation": obs.model_dump(),
         "reward": 0.0,
         "done": False,
-        "info": {"task_id": payload.task_id},
+        "info": {"task_id": task_id},
     }
 
 
