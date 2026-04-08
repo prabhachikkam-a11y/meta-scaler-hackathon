@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 from typing import Dict, List, Optional, Tuple
-
-from openai import OpenAI
 
 from env.environment import CustomerSupportEnv
 from env.models import Action
@@ -12,6 +11,8 @@ from env.models import Action
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
+USE_LLM_ACTIONS = os.getenv("USE_LLM_ACTIONS", "false").strip().lower() == "true"
 BENCHMARK = "customer-support-sla-openenv"
 
 TASKS = [
@@ -43,7 +44,7 @@ def log_step(step: int, action_str: str, reward: float, done: bool, error: Optio
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     reward_csv = ",".join(f"{r:.2f}" for r in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={reward_csv}",
+        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={reward_csv}",
         flush=True,
     )
 
@@ -101,8 +102,11 @@ def _fallback_action(task_id: str, step: int) -> Action:
     return Action(action_type="view_ticket")
 
 
-def _llm_action(client: OpenAI, task_id: str, step: int, observation: dict) -> Optional[Action]:
-    if not HF_TOKEN:
+def _llm_action(client: object, task_id: str, step: int, observation: dict) -> Optional[Action]:
+    if not USE_LLM_ACTIONS:
+        return None
+
+    if not HF_TOKEN or client is None:
         return None
 
     prompt = {
@@ -142,7 +146,7 @@ def _llm_action(client: OpenAI, task_id: str, step: int, observation: dict) -> O
         return None
 
 
-def run_task(client: OpenAI, task_id: str) -> Tuple[bool, int, float, List[float]]:
+def run_task(client: object, task_id: str) -> Tuple[bool, int, float, List[float]]:
     env = CustomerSupportEnv()
     rewards: List[float] = []
     score = 0.0
@@ -173,14 +177,35 @@ def run_task(client: OpenAI, task_id: str) -> Tuple[bool, int, float, List[float
                 break
 
         success = score >= 0.85
-        return success, steps_taken, score, rewards
+    except Exception as exc:
+        steps_taken += 1
+        rewards.append(0.0)
+        score = 0.0
+        success = False
+        log_step(step=steps_taken, action_str="exception", reward=0.0, done=True, error=str(exc))
     finally:
+        close_fn = getattr(env, "close", None)
+        if callable(close_fn):
+            try:
+                close_fn()
+            except Exception:
+                pass
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+
+    return success, steps_taken, score, rewards
 
 
 def main() -> None:
-    api_key = HF_TOKEN or os.getenv("API_KEY", "")
-    client = OpenAI(base_url=API_BASE_URL, api_key=api_key)
+    warnings.filterwarnings(
+        "ignore",
+        message=r"Core Pydantic V1 functionality isn't compatible with Python 3\.14 or greater\.",
+    )
+
+    client = None
+    if USE_LLM_ACTIONS:
+        from openai import OpenAI
+
+        client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
     for task_id in TASKS:
         run_task(client, task_id)

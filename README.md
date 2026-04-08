@@ -96,6 +96,7 @@ Set environment variables:
 - `API_BASE_URL`
 - `MODEL_NAME`
 - `HF_TOKEN`
+- `LOCAL_IMAGE_NAME` (optional, only if running a docker-image based env client)
 
 Then run:
 ```bash
